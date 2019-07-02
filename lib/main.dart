@@ -1,63 +1,52 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_login/data/models/auth.dart';
-import 'package:persist_theme/persist_theme.dart';
-import 'package:scoped_model/scoped_model.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-import 'ui/lockedscreen/home.dart';
-import 'ui/lockedscreen/settings.dart';
-import 'ui/signin/newaccount.dart';
-import 'ui/signin/signin.dart';
+import 'package:firebase_analytics/observer.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'services/services.dart';
+import 'screens/screens.dart';
+import 'package:provider/provider.dart';
 
 void main() => runApp(MyApp());
 
-class MyApp extends StatefulWidget {
-  @override
-  _MyAppState createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  final ThemeModel _model = ThemeModel();
-  final AuthModel _auth = new AuthModel();
-
-  @override
-  void initState() {
-    try {
-      _auth.loadSettings();
-    } catch (e) {
-      print("Error Loading Settings: $e");
-    }
-    try {
-      _model.loadFromDisk();
-    } catch (e) {
-      print("Error Loading Theme: $e");
-    }
-    super.initState();
-  }
-
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return ScopedModel<ThemeModel>(
-        model: _model,
-        child: new ScopedModelDescendant<ThemeModel>(
-          builder: (context, child, theme) => ScopedModel<AuthModel>(
-                model: _auth,
-                child: MaterialApp(
-                  theme: theme.theme,
-                  home: new ScopedModelDescendant<AuthModel>(
-                      builder: (context, child, model) {
-                    if (model?.user != null) return Home();
-                    return LoginPage();
-                  }),
-                  routes: <String, WidgetBuilder>{
-                    "/login": (BuildContext context) => LoginPage(),
-                    "/menu": (BuildContext context) => Home(),
-                    "/home": (BuildContext context) => Home(),
-                    "/settings": (BuildContext context) => SettingsPage(),
-                    "/create": (BuildContext context) => CreateAccount(),
-                  },
-                ),
-              ),
-        ));
+    return MultiProvider(
+      providers: [
+        StreamProvider<Report>.value(stream: Global.reportRef.documentStream),
+        StreamProvider<FirebaseUser>.value(stream: AuthService().user),
+      ],
+      child: MaterialApp(
+        // Firebase Analytics
+        navigatorObservers: [
+          FirebaseAnalyticsObserver(analytics: FirebaseAnalytics()),
+        ],
+
+        // Named Routes
+        routes: {
+          '/': (context) => LoginScreen(),
+          '/topics': (context) => TopicsScreen(),
+          '/profile': (context) => ProfileScreen(),
+          '/about': (context) => AboutScreen(),
+        },
+
+        // Theme
+        theme: ThemeData(
+          fontFamily: 'Nunito',
+          bottomAppBarTheme: BottomAppBarTheme(
+            color: Colors.black87,
+          ),
+          brightness: Brightness.dark,
+          textTheme: TextTheme(
+            body1: TextStyle(fontSize: 18),
+            body2: TextStyle(fontSize: 16),
+            button: TextStyle(letterSpacing: 1.5, fontWeight: FontWeight.bold),
+            headline: TextStyle(fontWeight: FontWeight.bold),
+            subhead: TextStyle(color: Colors.grey),
+          ),
+          buttonTheme: ButtonThemeData(),
+        ),
+      ),
+    );
   }
 }
